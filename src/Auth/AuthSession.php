@@ -51,4 +51,9 @@ class AuthSession extends DataObject
             'revokedAt' => $this->RevokedAt,
         ];
     }
+
+    public static function belongsToMemberId(mixed $sessionMemberId, mixed $memberId): bool
+    {
+        return (int) $sessionMemberId === (int) $memberId;
+    }
 }

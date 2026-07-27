@@ -113,6 +113,27 @@ Use `?filter=field:ExactMatch:value,field:PartialMatch:value`. Multiple filters 
 
 Use `?sort=field` or `?sort=-field` for descending order. Only DB columns are accepted.
 
+## Group-Based Auth
+
+The module automatically creates a **"REST API Users"** group (`restful-api-users` code) on `dev/build`. All users who register through the API are placed in this group. Only members of this group can receive JWT tokens — this cleanly separates API users from CMS/admin logins.
+
+The group is managed by `BradTipper\RestfulServer\Security\RestfulApiMemberGroup`:
+
+```php
+// Ensure the group exists (called automatically on dev/build)
+RestfulApiMemberGroup::ensure();
+
+// Check if a member is an API user
+RestfulApiMemberGroup::isApiUser($member);
+
+// Add a member to the API users group
+RestfulApiMemberGroup::addMember($member);
+```
+
+### Auth Sessions in the CMS
+
+The module adds an **AuthSessions** tab to every Member in the CMS (under the Security section). This replaces the need for a standalone AuthSessionAdmin. The tab shows all API sessions for that member in a read-only gridfield.
+
 ## Codegen
 
 This module exposes a schema endpoint that the companion [`@bradtipper/restful-client`](https://github.com/brad-tipper/silverstripe-restful-client) package reads to generate TypeScript types and Tanstack Query hooks per resource. See that package's README for the generation step.

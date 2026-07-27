@@ -38,7 +38,7 @@ trait CurrentMemberTrait
         }
 
         $member = Member::get()->filter('UUID', $payload['sub'] ?? '')->first();
-        if (!$member || (int) $session->MemberID !== (int) $member->ID) {
+        if (!$member || !AuthSession::belongsToMemberId($session->MemberID, $member->ID)) {
             throw new AuthException('Invalid token');
         }
 

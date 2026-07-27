@@ -1,0 +1,10 @@
+---
+Name: restfulserver-config
+---
+BradTipper\RestfulServer\Auth\AuthSession:
+  extensions:
+    - BradTipper\RestfulServer\Extensions\HasUuid
+
+SilverStripe\Security\Member:
+  extensions:
+    - BradTipper\RestfulServer\Extensions\MemberExtension
