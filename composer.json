@@ -1,0 +1,34 @@
+{
+    "name": "brad-tipper/silverstripe-restful-server",
+    "type": "silverstripe-vendormodule",
+    "description": "Opinionated REST API layer for Silverstripe 6 — RestfulDataObject, JWT auth, schema endpoint",
+    "license": "BSD-3-Clause",
+    "require": {
+        "php": "^8.3",
+        "silverstripe/framework": "^6",
+        "ramsey/uuid": "^4.9",
+        "firebase/php-jwt": "^7.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "BradTipper\\RestfulServer\\": "src/"
+        }
+    },
+    "extra": {
+        "expose": [],
+        "project-files": [
+            "_config/**/*",
+            "_config.php"
+        ]
+    },
+    "config": {
+        "process-timeout": 600,
+        "allow-plugins": {
+            "composer/installers": true,
+            "silverstripe/recipe-plugin": true,
+            "silverstripe/vendor-plugin": true
+        }
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
+}

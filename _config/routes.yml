@@ -1,0 +1,8 @@
+---
+Name: restfulserver-routes
+---
+SilverStripe\Control\Director:
+  rules:
+    'api/$ApiHandler/$Action/$ID': 'BradTipper\RestfulServer\Api\RequestHandler'
+    'api/$ApiHandler/$Action': 'BradTipper\RestfulServer\Api\RequestHandler'
+    'api/$ApiHandler': 'BradTipper\RestfulServer\Api\RequestHandler'
