@@ -29,6 +29,8 @@ class RequestHandler extends Controller
                 return AuthController::create()->handleRequest($request);
             case 'schema':
                 return SchemaController::create()->handleRequest($request);
+            case 'healthcheck':
+                return HealthcheckController::create()->handleRequest($request);
             default:
                 // Treat as a resource name for ResourceController.
                 // We pass the resource name via a request attribute since
