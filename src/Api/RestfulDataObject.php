@@ -140,7 +140,7 @@ class RestfulDataObject extends DataObject
         $map = [
             'varchar' => 'string',
             'text' => 'string',
-            'dbdatet' => 'datetime',
+            'dbdatetime' => 'datetime',
             'date' => 'date',
             'decimal' => 'number',
             'int' => 'integer',
