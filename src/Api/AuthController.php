@@ -295,6 +295,7 @@ class AuthController extends ApiController implements RequiresAuth
 
         return $this->respond([
             'accessToken' => $accessToken,
+            'refreshToken' => $refreshToken,
             'member' => [
                 'uuid' => $member->UUID,
                 'email' => $member->Email,

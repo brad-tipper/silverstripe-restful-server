@@ -9,7 +9,7 @@ use SilverStripe\Security\Security;
 
 class AuthSession extends DataObject
 {
-    private static string $table_name = 'RestfulServer_AuthSession';
+    private static string $table_name = 'AuthSession';
 
     private static array $db = [
         'RefreshTokenHash' => 'Varchar(255)',
