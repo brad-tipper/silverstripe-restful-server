@@ -1,8 +1,15 @@
 ---
 Name: restfulserver-routes
 ---
-SilverStripe\Control\Director:
-  rules:
-    'api/$ApiHandler/$Action/$ID': 'BradTipper\RestfulServer\Api\RequestHandler'
-    'api/$ApiHandler/$Action': 'BradTipper\RestfulServer\Api\RequestHandler'
-    'api/$ApiHandler': 'BradTipper\RestfulServer\Api\RequestHandler'
+# Route definitions are provided as a reference only.
+# Projects must copy these into their own app/_config/routes.yml with the
+# concrete handler class (or a subclass).  The module does not auto-register
+# routes so that each project controls its own URL namespace.
+#
+# Example (place in your project's app/_config/routes.yml):
+#
+#   SilverStripe\Control\Director:
+#     rules:
+#       'api/$ApiHandler/$Action/$ID': 'YourApp\Api\ApiRequestHandler'
+#       'api/$ApiHandler/$Action': 'YourApp\Api\ApiRequestHandler'
+#       'api/$ApiHandler': 'YourApp\Api\ApiRequestHandler'

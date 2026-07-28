@@ -4,6 +4,7 @@ namespace BradTipper\RestfulServer\Api;
 
 use BradTipper\RestfulServer\Auth\AuthSession;
 use BradTipper\RestfulServer\Auth\JwtCodec;
+use BradTipper\RestfulServer\Auth\PasswordStrength;
 use SilverStripe\Control\Director;
 use SilverStripe\Control\Cookie;
 use SilverStripe\Control\HTTPRequest;
@@ -28,6 +29,7 @@ class AuthController extends ApiController implements RequiresAuth
         'resetPassword',
         'refresh',
         'identity',
+        'passwordStrength',
     ];
 
     private static array $authenticated_actions = [
@@ -229,6 +231,21 @@ class AuthController extends ApiController implements RequiresAuth
         return $this->respond([
             'accessToken' => $accessToken,
         ]);
+    }
+
+    /**
+     * POST /api/auth/password-strength
+     * Accepts { password } and returns entropy score and feedback.
+     * No authentication required — safe to call from registration forms.
+     */
+    public function passwordStrength(HTTPRequest $request): HTTPResponse
+    {
+        if (!$request->isPOST()) {
+            return $this->methodNotAllowed('POST');
+        }
+        $data = $this->requestData($request);
+        $password = (string) ($data['password'] ?? '');
+        return $this->respond(['strength' => PasswordStrength::evaluate($password)]);
     }
 
     /**

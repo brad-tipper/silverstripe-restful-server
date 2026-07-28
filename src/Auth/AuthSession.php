@@ -42,6 +42,15 @@ class AuthSession extends DataObject
         return $this->canView($member, $context);
     }
 
+    /**
+     * Sessions are created programmatically by AuthController::issueTokens(),
+     * never through the auto-discovered CRUD API or CMS.
+     */
+    public function canCreate($member = null, $context = []): bool
+    {
+        return false;
+    }
+
     public function toApiArray(): array
     {
         return [
