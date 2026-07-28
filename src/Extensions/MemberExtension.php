@@ -6,13 +6,13 @@ use BradTipper\RestfulServer\Auth\AuthSession;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordViewer;
-use SilverStripe\ORM\DataExtension;
+use SilverStripe\Core\Extension;
 
 /**
  * Adds an AuthSessions tab to the Member CMS view, replacing
  * the need for a standalone AuthSessionAdmin.
  */
-class MemberExtension extends DataExtension
+class MemberExtension extends Extension
 {
     private static array $has_many = [
         'RestfulAuthSessions' => AuthSession::class . '.Member',

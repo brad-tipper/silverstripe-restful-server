@@ -147,7 +147,7 @@ class ResourceController extends ApiController implements RequiresAuth
     /**
      * POST /api/{resource}
      */
-    public function create(HTTPRequest $request): HTTPResponse
+    public function doCreate(HTTPRequest $request): HTTPResponse
     {
         if (!$request->isPOST()) return $this->methodNotAllowed('POST');
 

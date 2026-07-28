@@ -12,7 +12,7 @@ class HasUuid extends Extension
     ];
 
     private static array $indexes = [
-        'UUID' => [
+        'UniqueUUID' => [
             'type' => 'unique',
             'columns' => ['UUID'],
         ],
