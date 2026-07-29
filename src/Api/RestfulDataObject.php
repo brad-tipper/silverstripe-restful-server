@@ -52,6 +52,11 @@ class RestfulDataObject extends DataObject
      * Includes UUID, all DB fields, and a summary of relations.
      * Override in subclasses to customise the shape.
      */
+    public function apiList(?Member $member = null)
+    {
+        return static::get();
+    }
+
     public function toApiArray(): array
     {
         $data = [
@@ -81,6 +86,11 @@ class RestfulDataObject extends DataObject
         return $data;
     }
 
+    public function toApiArrayForMember(?Member $member = null): array
+    {
+        return $this->toApiArray();
+    }
+
     /**
      * Returns the schema definition for this resource: field names, types,
      * whether they're required, read-only, and relation info.
@@ -104,7 +114,7 @@ class RestfulDataObject extends DataObject
             $fields["{$relName}Uuid"] = [
                 'type' => 'uuid',
                 'required' => false,
-                'readOnly' => false,
+                'readOnly' => true,
                 'relation' => [
                     'type' => 'has_one',
                     'class' => $relClass,

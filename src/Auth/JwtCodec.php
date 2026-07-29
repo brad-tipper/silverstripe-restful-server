@@ -17,13 +17,18 @@ class JwtCodec
 
     public function encode(array $payload): string
     {
+        $payload['iss'] ??= $this->issuer();
         return JWT::encode($payload, $this->secret(), 'HS256');
     }
 
     public function decode(string $token): array
     {
         $decoded = JWT::decode($token, new Key($this->secret(), 'HS256'));
-        return json_decode(json_encode($decoded, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        $payload = json_decode(json_encode($decoded, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        if (($payload['iss'] ?? null) !== $this->issuer()) {
+            throw new RuntimeException('Invalid JWT issuer');
+        }
+        return $payload;
     }
 
     public function secret(): string

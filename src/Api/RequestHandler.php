@@ -27,19 +27,38 @@ class RequestHandler extends Controller
         switch ($handler) {
             case 'auth':
                 return AuthController::create()->handleRequest($request);
-            case 'schema':
-                return SchemaController::create()->handleRequest($request);
             case 'healthcheck':
                 return HealthcheckController::create()->handleRequest($request);
             default:
-                // Treat as a resource name for ResourceController.
-                // We pass the resource name via a request attribute since
-                // param() is read-only. ResourceController reads it from $request->param('ResourceName').
-                $request->setRouteParams(array_merge(
-                    $request->routeParams() ?: [],
-                    ['ResourceName' => $handler]
-                ));
+                $this->normaliseResourceRoute($request, $handler);
                 return ResourceController::create()->handleRequest($request);
         }
+    }
+
+    private function normaliseResourceRoute(HTTPRequest $request, string $resource): void
+    {
+        $route = $request->routeParams() ?: [];
+        $pathAction = trim((string) ($route['Action'] ?? ''));
+        $method = strtoupper($request->httpMethod());
+
+        if ($pathAction === '') {
+            $action = match ($method) {
+                'GET' => 'index',
+                'POST' => 'create',
+                default => '',
+            };
+        } else {
+            $route['ID'] = $pathAction;
+            $action = match ($method) {
+                'GET' => 'show',
+                'PATCH' => 'update',
+                'DELETE' => 'delete',
+                default => '',
+            };
+        }
+
+        $route['ResourceName'] = $resource;
+        $route['Action'] = $action;
+        $request->setRouteParams($route);
     }
 }

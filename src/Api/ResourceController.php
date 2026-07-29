@@ -19,7 +19,7 @@ use SilverStripe\Security\Security;
  *   PATCH  /api/resource/{uuid}   → update
  *   DELETE /api/resource/{uuid}   → delete
  */
-class ResourceController extends ApiController implements RequiresAuth
+class ResourceController extends ApiController implements SupportsAuth
 {
     private static array $allowed_actions = [
         'index',
@@ -71,7 +71,7 @@ class ResourceController extends ApiController implements RequiresAuth
             return $this->respondForbidden();
         }
 
-        $list = $class::get();
+        $list = $singleton->apiList($member);
 
         // Apply optional filter param
         $filter = $request->getVar('filter');
@@ -83,12 +83,21 @@ class ResourceController extends ApiController implements RequiresAuth
                 // Support: field:value, field:PartialMatch:value, etc.
                 if (str_contains($part, ':')) {
                     $segments = explode(':', $part);
-                    $field = array_shift($segments);
+                    $field = trim((string) array_shift($segments));
                     $modifier = count($segments) > 1 ? array_shift($segments) : 'ExactMatch';
                     $val = implode(':', $segments);
+                    $readable = $singleton->getReadableFields($member);
+                    $dbFields = array_keys($singleton->config()->get('db') ?: []);
+                    if ($readable !== null) {
+                        $dbFields = array_values(array_intersect($dbFields, $readable));
+                    }
+                    $modifiers = ['ExactMatch', 'PartialMatch', 'StartsWith', 'EndsWith', 'GreaterThan', 'GreaterThanOrEqual', 'LessThan', 'LessThanOrEqual'];
+                    if (!in_array($field, $dbFields, true) || !in_array($modifier, $modifiers, true)) {
+                        return $this->respondError('Invalid filter', 422);
+                    }
                     $list = $list->filter("{$field}:{$modifier}", $val);
                 } else {
-                    $list = $list->filter('UUID', $part);
+                    $list = $list->filter('UUID', trim($part));
                 }
             }
         }
@@ -114,7 +123,7 @@ class ResourceController extends ApiController implements RequiresAuth
         foreach ($list->limit($perPage, $offset) as $item) {
             /** @var RestfulDataObject $item */
             if ($item->canView($member)) {
-                $items[] = $item->toApiArray();
+                $items[] = $item->toApiArrayForMember($member);
             }
         }
 
@@ -141,7 +150,7 @@ class ResourceController extends ApiController implements RequiresAuth
             return $this->respondNotFound();
         }
 
-        return $this->respond(['data' => $item->toApiArray()]);
+        return $this->respond(['data' => $item->toApiArrayForMember($member)]);
     }
 
     /**
@@ -175,7 +184,7 @@ class ResourceController extends ApiController implements RequiresAuth
         }
         $item->write();
 
-        return $this->respond(['data' => $item->toApiArray()], 201);
+        return $this->respond(['data' => $item->toApiArrayForMember($member)], 201);
     }
 
     /**
@@ -212,7 +221,7 @@ class ResourceController extends ApiController implements RequiresAuth
         }
         $item->write();
 
-        return $this->respond(['data' => $item->toApiArray()]);
+        return $this->respond(['data' => $item->toApiArrayForMember($member)]);
     }
 
     /**

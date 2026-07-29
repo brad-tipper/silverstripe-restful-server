@@ -1,5 +1,6 @@
 {
     "name": "brad-tipper/silverstripe-restful-server",
+    "version": "1.0.0",
     "type": "silverstripe-vendormodule",
     "description": "Opinionated REST API layer for Silverstripe 6 — RestfulDataObject, JWT auth, schema endpoint",
     "license": "BSD-3-Clause",

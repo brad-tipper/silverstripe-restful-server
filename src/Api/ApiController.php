@@ -25,7 +25,7 @@ abstract class ApiController extends Controller
         }
 
         try {
-            if ($this instanceof RequiresAuth) {
+            if ($this instanceof SupportsAuth) {
                 if (in_array($action, $this->config()->get('authenticated_actions') ?? [], true)) {
                     $this->currentMember();
                 }

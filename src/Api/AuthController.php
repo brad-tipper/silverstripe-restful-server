@@ -16,9 +16,10 @@ use SilverStripe\Security\Member;
 use SilverStripe\Security\MemberAuthenticator\MemberAuthenticator;
 use SilverStripe\Security\IdentityStore;
 use SilverStripe\Security\Security;
+use BradTipper\RestfulServer\Security\RestfulApiMemberGroup;
 use Psr\Log\LoggerInterface;
 
-class AuthController extends ApiController implements RequiresAuth
+class AuthController extends ApiController implements SupportsAuth
 {
     private const REFRESH_COOKIE = 'restful_refresh';
 
@@ -57,6 +58,9 @@ class AuthController extends ApiController implements RequiresAuth
 
         if (!$member) {
             return $this->respondError('Email/password sign-in failed.', 401);
+        }
+        if (!RestfulApiMemberGroup::isApiUser($member)) {
+            return $this->respondError('Account is not authorized for API access.', 403);
         }
 
         return $this->issueTokens($member, $request);
@@ -230,6 +234,7 @@ class AuthController extends ApiController implements RequiresAuth
 
         return $this->respond([
             'accessToken' => $accessToken,
+            'refreshToken' => $newRefreshToken,
         ]);
     }
 

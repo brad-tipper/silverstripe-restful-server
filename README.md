@@ -18,12 +18,11 @@ It's published publicly for ease of distribution and because others might find i
       ];
   }
   ```
-- **JWT authentication** (custom, rolled in-house) with login, refresh, logout, and identity endpoints out of the box. Secrets, expiry, and issuer are configurable via environment variables (`RESTFUL_JWT_SECRET`, `RESTFUL_JWT_EXPIRY`, `RESTFUL_JWT_ISSUER`); the flow itself is not.
+- **JWT authentication** (custom, rolled in-house) with login, refresh, logout, and identity endpoints out of the box. Secrets and expiry are configurable via `RESTFUL_JWT_SECRET` and `RESTFUL_JWT_EXPIRY`.
 - **A single, opinionated password reset flow** — one method (`requestReset`/`resetPassword`), no configurable alternatives.
 - **A consistent JSON error envelope** across every endpoint: `{ "error": "...", "details": { ... } }`.
 - **Standard CRUD endpoints** for every `RestfulDataObject` subclass — list (paginated/filtered/sorted), show, create, update, delete.
 - **Standard list endpoint behaviour** — pagination (`page`, `perPage`), filtering (`filter`), and sorting (`sort`) conventions applied consistently to every resource.
-- **A machine-readable schema endpoint** (`GET /api/schema`) describing exposed resources, fields, and types — used by the companion client package to generate typed hooks.
 
 ## Requirements
 
@@ -44,7 +43,6 @@ Set these environment variables:
 |----------|---------|-------------|
 | `RESTFUL_JWT_SECRET` | *(required)* | HMAC secret for JWT signing |
 | `RESTFUL_JWT_EXPIRY` | `900` | Access token TTL in seconds |
-| `RESTFUL_JWT_ISSUER` | `restful-server` | JWT issuer claim |
 | `RESTFUL_EMAIL_FROM` | `no-reply@example.com` | From address for password reset emails |
 
 ## API Endpoints
@@ -71,12 +69,6 @@ Every class extending `RestfulDataObject` gets these endpoints automatically:
 | POST | `/api/{resource}` | Create record |
 | PATCH | `/api/{resource}/{uuid}` | Update record |
 | DELETE | `/api/{resource}/{uuid}` | Delete record |
-
-### Schema
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/schema` | Introspect all registered resources and their fields |
 
 ## Error Format
 
@@ -115,7 +107,7 @@ Use `?sort=field` or `?sort=-field` for descending order. Only DB columns are ac
 
 ## Group-Based Auth
 
-The module automatically creates a **"REST API Users"** group (`restful-api-users` code) on `dev/build`. All users who register through the API are placed in this group. Only members of this group can receive JWT tokens — this cleanly separates API users from CMS/admin logins.
+The module provides helpers for a **"REST API Users"** group (`restful-api-users` code). Applications must call the group setup/add-member helpers from their registration and login policy; the module does not silently grant JWT access to every CMS member.
 
 The group is managed by `BradTipper\RestfulServer\Security\RestfulApiMemberGroup`:
 
@@ -136,4 +128,14 @@ The module adds an **AuthSessions** tab to every Member in the CMS (under the Se
 
 ## Codegen
 
-This module exposes a schema endpoint that the companion [`@bradtipper/restful-client`](https://github.com/brad-tipper/silverstripe-restful-client) package reads to generate TypeScript types and Tanstack Query hooks per resource. See that package's README for the generation step.
+The module does not generate an application client. Define the complete application API, including custom controllers and response shapes, as an OpenAPI document in the consuming project and generate its TypeScript client with a standard tool such as [`@hey-api/openapi-ts`](https://heyapi.dev/). For example:
+
+```json
+{
+  "scripts": {
+    "gen:api": "openapi-ts --file openapi-ts.config.ts"
+  }
+}
+```
+
+Keep generated output out of hand-edited source and regenerate it whenever the OpenAPI contract changes.
