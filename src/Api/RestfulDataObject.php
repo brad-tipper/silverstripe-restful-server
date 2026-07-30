@@ -3,20 +3,17 @@
 namespace BradTipper\RestfulServer\Api;
 
 use BradTipper\RestfulServer\Extensions\HasUuid;
-use SilverStripe\Control\HTTPRequest;
-use SilverStripe\Control\HTTPResponse;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\ORM\DataList;
 use SilverStripe\Security\Security;
 use SilverStripe\Security\Member;
+use LogicException;
 
 /**
- * Base DataObject that exposes a model over REST with zero additional wiring.
+ * Base DataObject for explicitly authorized REST resources.
  *
- * Extend this class directly (e.g. `class Invoice extends RestfulDataObject {}`)
- * and define your $db, $has_one, $has_many, $many_many fields as normal.
- * CRUD list/show/create/update/delete endpoints are automatically available
- * via the parent RESTful controller routing.
+ * Subclasses must opt into listing and return a query already scoped to the
+ * authenticated member. The default is deliberately fail-closed.
  *
  * Field-level protection:
  *   - Return an array of field names from canRead() to allow read, or null for all
@@ -28,6 +25,10 @@ class RestfulDataObject extends DataObject
     private static array $extensions = [
         HasUuid::class,
     ];
+
+    private ?Member $serializationMember = null;
+
+    private bool $hasSerializationMember = false;
 
     /**
      * Subclasses can override to restrict which DB fields are readable.
@@ -48,22 +49,39 @@ class RestfulDataObject extends DataObject
     }
 
     /**
+     * Class-level authorization decision for collection access.
+     */
+    public function canList(?Member $member = null): bool
+    {
+        return false;
+    }
+
+    /**
+     * Return only records authorized for this member.
+     *
+     * This method is mandatory for resources that enable canList(). Filtering,
+     * counts and pagination are applied to this query, so it must never contain
+     * records the member cannot view.
+     */
+    public function apiList(?Member $member = null): DataList
+    {
+        throw new LogicException(static::class . ' must implement apiList() before collection access is enabled.');
+    }
+
+    /**
      * Serialize this object to a standard API response array.
      * Includes UUID, all DB fields, and a summary of relations.
      * Override in subclasses to customise the shape.
      */
-    public function apiList(?Member $member = null)
-    {
-        return static::get();
-    }
-
     public function toApiArray(): array
     {
         $data = [
             'uuid' => $this->UUID,
         ];
 
-        $readable = $this->getReadableFields();
+        $readable = $this->getReadableFields(
+            $this->hasSerializationMember ? $this->serializationMember : Security::getCurrentUser()
+        );
 
         foreach ($this->config()->get('db') as $field => $type) {
             if ($readable !== null && !in_array($field, $readable, true)) {
@@ -88,7 +106,16 @@ class RestfulDataObject extends DataObject
 
     public function toApiArrayForMember(?Member $member = null): array
     {
-        return $this->toApiArray();
+        $previousMember = $this->serializationMember;
+        $previousState = $this->hasSerializationMember;
+        $this->serializationMember = $member;
+        $this->hasSerializationMember = true;
+        try {
+            return $this->toApiArray();
+        } finally {
+            $this->serializationMember = $previousMember;
+            $this->hasSerializationMember = $previousState;
+        }
     }
 
     /**

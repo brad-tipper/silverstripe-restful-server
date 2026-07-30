@@ -28,6 +28,7 @@ final class JwtCodecTest extends TestCase
         $token = $codec->encode($payload);
         $decoded = $codec->decode($token);
 
+        $payload['iss'] = 'restful-server';
         self::assertSame($payload, $decoded);
     }
 

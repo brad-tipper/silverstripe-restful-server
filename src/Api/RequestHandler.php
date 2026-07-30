@@ -11,7 +11,6 @@ use SilverStripe\Control\HTTPResponse;
  *
  * Routes:
  *   /api/auth/*          → AuthController
- *   /api/schema          → SchemaController
  *   /api/{resource}/*    → ResourceController (auto-discovered)
  */
 class RequestHandler extends Controller

@@ -7,6 +7,7 @@ use Firebase\JWT\Key;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
 use RuntimeException;
+use UnexpectedValueException;
 
 class JwtCodec
 {
@@ -26,7 +27,7 @@ class JwtCodec
         $decoded = JWT::decode($token, new Key($this->secret(), 'HS256'));
         $payload = json_decode(json_encode($decoded, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
         if (($payload['iss'] ?? null) !== $this->issuer()) {
-            throw new RuntimeException('Invalid JWT issuer');
+            throw new UnexpectedValueException('Invalid JWT issuer');
         }
         return $payload;
     }

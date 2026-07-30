@@ -6,7 +6,7 @@ use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\HTTPResponse;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\Security\Security;
+use LogicException;
 
 /**
  * Auto-discovered CRUD controller for RestfulDataObject subclasses.
@@ -45,14 +45,31 @@ class ResourceController extends ApiController implements SupportsAuth
      */
     public static function buildResourceMap(): void
     {
-        $map = [];
         $classes = ClassInfo::subclassesFor(RestfulDataObject::class);
+        self::$resource_map = self::resourceMapForClasses($classes);
+    }
+
+    /**
+     * @param iterable<class-string> $classes
+     * @return array<string, class-string>
+     */
+    public static function resourceMapForClasses(iterable $classes): array
+    {
+        $map = [];
         foreach ($classes as $class) {
             if ($class === RestfulDataObject::class) continue;
-            $name = $class::resourceName();
+            $name = strtolower(trim((string) $class::resourceName()));
+            if ($name === '') {
+                throw new LogicException("REST resource {$class} has an empty resource name.");
+            }
+            if (isset($map[$name]) && $map[$name] !== $class) {
+                throw new LogicException(
+                    "Duplicate REST resource name '{$name}' declared by {$map[$name]} and {$class}."
+                );
+            }
             $map[$name] = $class;
         }
-        self::$resource_map = $map;
+        return $map;
     }
 
     /**
@@ -67,7 +84,7 @@ class ResourceController extends ApiController implements SupportsAuth
         $member = $this->currentMember();
         /** @var RestfulDataObject $singleton */
         $singleton = Injector::inst()->get($class);
-        if (!$singleton->canView($member)) {
+        if (!$singleton->canList($member)) {
             return $this->respondForbidden();
         }
 
@@ -122,9 +139,7 @@ class ResourceController extends ApiController implements SupportsAuth
         $items = [];
         foreach ($list->limit($perPage, $offset) as $item) {
             /** @var RestfulDataObject $item */
-            if ($item->canView($member)) {
-                $items[] = $item->toApiArrayForMember($member);
-            }
+            $items[] = $item->toApiArrayForMember($member);
         }
 
         return $this->respond([

@@ -8,7 +8,7 @@ It's published publicly for ease of distribution and because others might find i
 
 ## What it gives you
 
-- **`RestfulDataObject`** — a base `DataObject` subclass you extend to instantly expose a model over REST, with consistent serialization, permission checks, filtering, and pagination.
+- **`RestfulDataObject`** — a fail-closed base `DataObject` for explicitly authorized REST resources, with consistent serialization, filtering, and pagination.
   ```php
   class Invoice extends RestfulDataObject
   {
@@ -16,6 +16,42 @@ It's published publicly for ease of distribution and because others might find i
           'Amount' => 'Decimal(15,2)',
           'Description' => 'Varchar(255)',
       ];
+
+      private static array $has_one = [
+          'Owner' => Member::class,
+      ];
+
+      public function canList(?Member $member = null): bool
+      {
+          return (bool) $member;
+      }
+
+      public function apiList(?Member $member = null): DataList
+      {
+          // This query is the authorization boundary. Counts and pagination
+          // are calculated only after this tenant scope is applied.
+          return static::get()->filter('OwnerID', $member?->ID ?? 0);
+      }
+
+      public function canView($member = null, $context = []): bool
+      {
+          return $member && (int) $this->OwnerID === (int) $member->ID;
+      }
+
+      public function canCreate($member = null, $context = []): bool
+      {
+          return false;
+      }
+
+      public function canEdit($member = null, $context = []): bool
+      {
+          return false;
+      }
+
+      public function canDelete($member = null, $context = []): bool
+      {
+          return false;
+      }
   }
   ```
 - **JWT authentication** (custom, rolled in-house) with login, refresh, logout, and identity endpoints out of the box. Secrets and expiry are configurable via `RESTFUL_JWT_SECRET` and `RESTFUL_JWT_EXPIRY`.
@@ -53,14 +89,17 @@ Set these environment variables:
 |--------|------|-------------|
 | POST | `/api/auth/login` | Sign in with `{ email, password }` |
 | POST | `/api/auth/logout` | Revoke session (requires auth) |
-| POST | `/api/auth/refresh` | Exchange refresh token for new access token |
+| POST | `/api/auth/refresh` | Exchange and rotate the refresh token |
 | POST | `/api/auth/request-reset` | Request password reset email |
 | POST | `/api/auth/reset-password` | Complete password reset |
 | GET | `/api/auth/identity` | Check current auth status |
 
-### Resources (auto-discovered)
+### Resources (explicit authorization, auto-discovered routing)
 
-Every class extending `RestfulDataObject` gets these endpoints automatically:
+Every class extending `RestfulDataObject` is routed automatically, but
+collection access remains disabled until it implements both `canList()` and an
+authorization-scoped `apiList()`. Resource names must be unique; application
+startup fails when two classes declare the same name.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -120,7 +159,25 @@ RestfulApiMemberGroup::isApiUser($member);
 
 // Add a member to the API users group
 RestfulApiMemberGroup::addMember($member);
+
+// Remove API access and synchronously revoke every session. Always use this
+// helper instead of mutating the Groups relation directly.
+RestfulApiMemberGroup::removeMember($member);
 ```
+
+Bearer and refresh validation re-check API membership and the member's
+`RestfulApiEnabled` flag on every request. Password changes, disabling API
+access, member deletion, and group removal through `removeMember()` revoke all
+active sessions.
+
+### Refresh-token transports
+
+Browser flows receive refresh tokens only in a Secure, HttpOnly, SameSite=Lax
+cookie. The JSON response contains only the short-lived access token. Native
+clients send `X-Restful-Client: native` without a browser `Origin` header; only
+that flow accepts and returns a refresh token in JSON, which the client must
+store in platform secure storage. Refresh tokens rotate on every use and an old
+token cannot be replayed.
 
 ### Auth Sessions in the CMS
 

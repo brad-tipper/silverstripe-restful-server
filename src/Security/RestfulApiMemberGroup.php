@@ -2,10 +2,9 @@
 
 namespace BradTipper\RestfulServer\Security;
 
-use SilverStripe\Core\Extension;
+use BradTipper\RestfulServer\Auth\AuthSession;
 use SilverStripe\Security\Group;
 use SilverStripe\Security\Member;
-use SilverStripe\Core\Manifest\ModuleManifest;
 
 /**
  * Ensures a "REST API Users" group exists.
@@ -42,6 +41,9 @@ class RestfulApiMemberGroup
      */
     public static function isApiUser(Member $member): bool
     {
+        if (!$member->exists() || !$member->RestfulApiEnabled) {
+            return false;
+        }
         $group = Group::get()->filter('Code', self::GROUP_CODE)->first();
         if (!$group) {
             return false;
@@ -55,6 +57,20 @@ class RestfulApiMemberGroup
     public static function addMember(Member $member): void
     {
         $group = self::ensure();
+        $member->RestfulApiEnabled = true;
+        $member->write();
         $member->addToGroupByCode(self::GROUP_CODE);
+    }
+
+    /**
+     * Remove API authorization and revoke every refresh/access session.
+     *
+     * Authorization-management code must use this method instead of mutating
+     * the Groups relation directly.
+     */
+    public static function removeMember(Member $member): void
+    {
+        AuthSession::revokeAllForMember($member);
+        $member->removeFromGroupByCode(self::GROUP_CODE);
     }
 }

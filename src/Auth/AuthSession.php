@@ -65,4 +65,18 @@ class AuthSession extends DataObject
     {
         return (int) $sessionMemberId === (int) $memberId;
     }
+
+    public static function revokeAllForMember(Member|int $member): void
+    {
+        $memberId = $member instanceof Member ? (int) $member->ID : $member;
+        if ($memberId <= 0) {
+            return;
+        }
+
+        $revokedAt = date('Y-m-d H:i:s');
+        foreach (self::get()->filter(['MemberID' => $memberId, 'RevokedAt' => null]) as $session) {
+            $session->RevokedAt = $revokedAt;
+            $session->write();
+        }
+    }
 }

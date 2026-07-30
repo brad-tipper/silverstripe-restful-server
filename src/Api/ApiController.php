@@ -18,23 +18,47 @@ abstract class ApiController extends Controller
 
     public function handleRequest(HTTPRequest $request): HTTPResponse
     {
-        $this->setRequest($request);
-        $action = (string) $request->param('Action');
+        $action = lcfirst(str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', (string) $request->param('Action')))));
         if (!in_array(strtolower($action), $this->allowedActions() ?? [], true)) {
             return $this->respondError('Unknown API action', 404);
         }
 
+        $method = $action === 'create' && method_exists($this, 'doCreate') ? 'doCreate' : $action;
+        $this->beforeHandleRequest($request);
         try {
-            if ($this instanceof SupportsAuth) {
-                if (in_array($action, $this->config()->get('authenticated_actions') ?? [], true)) {
-                    $this->currentMember();
+            if (!$this->getResponse()->isFinished()) {
+                try {
+                    // Controller::handleAction() invokes the supported
+                    // beforeCallActionHandler/afterCallActionHandler extension
+                    // lifecycle around the API action.
+                    $response = $this->handleAction($request, $method);
+                } catch (AuthException $exception) {
+                    $response = $this->respondError($exception->getMessage(), 401);
                 }
+                $this->prepareResponse($response);
             }
-
-            return $this->$action($request);
-        } catch (AuthException $e) {
-            return $this->respondError($e->getMessage(), 401);
+        } finally {
+            $this->afterHandleRequest();
         }
+
+        return $this->getResponse();
+    }
+
+    protected function handleAction($request, $action)
+    {
+        $authenticatedActions = array_map(
+            'strtolower',
+            $this->config()->get('authenticated_actions') ?? []
+        );
+        $publicAction = $action === 'doCreate' ? 'create' : $action;
+        if (
+            $this instanceof SupportsAuth
+            && in_array(strtolower($publicAction), $authenticatedActions, true)
+        ) {
+            $this->currentMember();
+        }
+
+        return parent::handleAction($request, $action);
     }
 
     protected function jsonResponse(mixed $data, int $status = 200): HTTPResponse

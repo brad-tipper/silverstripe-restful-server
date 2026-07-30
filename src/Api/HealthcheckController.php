@@ -21,11 +21,11 @@ class HealthcheckController extends Controller
 
     public function handleRequest(HTTPRequest $request): HTTPResponse
     {
-        return $this->jsonResponse(['status' => 'ok']);
+        return $this->respond(['status' => 'ok']);
     }
 
     public function index(HTTPRequest $request): HTTPResponse
     {
-        return $this->jsonResponse(['status' => 'ok']);
+        return $this->respond(['status' => 'ok']);
     }
 }

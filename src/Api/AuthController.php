@@ -35,7 +35,6 @@ class AuthController extends ApiController implements SupportsAuth
 
     private static array $authenticated_actions = [
         'logout',
-        'identity',
     ];
 
     /**
@@ -178,7 +177,9 @@ class AuthController extends ApiController implements SupportsAuth
     /**
      * POST /api/auth/refresh
      * Exchange a valid refresh token for a new access token.
-     * The refresh token can come from a cookie or the request body.
+     * Browser refresh tokens come only from the HttpOnly cookie. Native
+     * clients explicitly opt into a body transport and receive the rotated
+     * token for storage in platform secure storage.
      */
     public function refresh(HTTPRequest $request): HTTPResponse
     {
@@ -187,7 +188,10 @@ class AuthController extends ApiController implements SupportsAuth
         }
 
         $data = $this->requestData($request);
-        $refreshToken = Cookie::get(self::REFRESH_COOKIE) ?: (string) ($data['refreshToken'] ?? '');
+        $nativeTransport = $this->usesNativeRefreshTransport($request);
+        $refreshToken = $nativeTransport
+            ? (string) ($data['refreshToken'] ?? '')
+            : (string) Cookie::get(self::REFRESH_COOKIE);
         $sessionUuid = (string) ($data['sessionUuid'] ?? '');
         $session = AuthSession::get()->filter('UUID', $sessionUuid)->first();
 
@@ -203,15 +207,21 @@ class AuthController extends ApiController implements SupportsAuth
             return $this->respondError('Invalid refresh token', 401);
         }
 
-        // Rotate the refresh token
+        $member = $session->Member();
+        if (
+            !$member->exists()
+            || !$member->UUID
+            || !RestfulApiMemberGroup::isApiUser($member)
+        ) {
+            AuthSession::revokeAllForMember((int) $session->MemberID);
+            return $this->respondError('Session expired or revoked', 401);
+        }
+
+        // Rotate before issuing another access token. Replaying the old value
+        // now fails password_verify().
         $newRefreshToken = bin2hex(random_bytes(32));
         $session->RefreshTokenHash = password_hash($newRefreshToken, PASSWORD_DEFAULT);
         $session->write();
-
-        $member = $session->Member();
-        if (!$member->exists() || !$member->UUID) {
-            return $this->respondError('Session expired or revoked', 401);
-        }
 
         $jwt = JwtCodec::singleton();
         $accessToken = $jwt->encode([
@@ -221,21 +231,15 @@ class AuthController extends ApiController implements SupportsAuth
             'exp' => time() + $jwt->expiry(),
         ]);
 
-        Cookie::set(
-            self::REFRESH_COOKIE,
-            $newRefreshToken,
-            30,
-            '/api/auth',
-            null,
-            Director::is_https($request),
-            true,
-            Cookie::SAMESITE_LAX
-        );
+        if (!$nativeTransport) {
+            $this->setRefreshCookie($request, $newRefreshToken);
+        }
 
-        return $this->respond([
-            'accessToken' => $accessToken,
-            'refreshToken' => $newRefreshToken,
-        ]);
+        $payload = ['accessToken' => $accessToken];
+        if ($nativeTransport) {
+            $payload['refreshToken'] = $newRefreshToken;
+        }
+        return $this->respond($payload);
     }
 
     /**
@@ -304,20 +308,13 @@ class AuthController extends ApiController implements SupportsAuth
         $session->RefreshTokenHash = password_hash($refreshToken, PASSWORD_DEFAULT);
         $session->write();
 
-        Cookie::set(
-            self::REFRESH_COOKIE,
-            $refreshToken,
-            30,
-            '/api/auth',
-            null,
-            Director::is_https($request),
-            true,
-            Cookie::SAMESITE_LAX
-        );
+        $nativeTransport = $this->usesNativeRefreshTransport($request);
+        if (!$nativeTransport) {
+            $this->setRefreshCookie($request, $refreshToken);
+        }
 
-        return $this->respond([
+        $payload = [
             'accessToken' => $accessToken,
-            'refreshToken' => $refreshToken,
             'member' => [
                 'uuid' => $member->UUID,
                 'email' => $member->Email,
@@ -327,6 +324,30 @@ class AuthController extends ApiController implements SupportsAuth
                 'label' => $session->Label,
                 'expiresAt' => $session->ExpiresAt,
             ],
-        ]);
+        ];
+        if ($nativeTransport) {
+            $payload['refreshToken'] = $refreshToken;
+        }
+        return $this->respond($payload);
+    }
+
+    protected function usesNativeRefreshTransport(HTTPRequest $request): bool
+    {
+        return strtolower(trim((string) $request->getHeader('X-Restful-Client'))) === 'native'
+            && trim((string) $request->getHeader('Origin')) === '';
+    }
+
+    protected function setRefreshCookie(HTTPRequest $request, string $refreshToken): void
+    {
+        Cookie::set(
+            self::REFRESH_COOKIE,
+            $refreshToken,
+            30,
+            '/api/auth',
+            null,
+            Director::isLive() || Director::is_https($request),
+            true,
+            Cookie::SAMESITE_LAX
+        );
     }
 }

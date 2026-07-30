@@ -4,6 +4,7 @@ namespace BradTipper\RestfulServer\Api;
 
 use BradTipper\RestfulServer\Auth\AuthSession;
 use BradTipper\RestfulServer\Auth\JwtCodec;
+use BradTipper\RestfulServer\Security\RestfulApiMemberGroup;
 use DomainException;
 use InvalidArgumentException;
 use SilverStripe\Security\Member;
@@ -40,6 +41,10 @@ trait CurrentMemberTrait
         $member = Member::get()->filter('UUID', $payload['sub'] ?? '')->first();
         if (!$member || !AuthSession::belongsToMemberId($session->MemberID, $member->ID)) {
             throw new AuthException('Invalid token');
+        }
+        if (!RestfulApiMemberGroup::isApiUser($member)) {
+            AuthSession::revokeAllForMember((int) $session->MemberID);
+            throw new AuthException('API access has been revoked');
         }
 
         Security::setCurrentUser($member);

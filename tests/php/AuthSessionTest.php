@@ -7,6 +7,21 @@ namespace BradTipper\RestfulServer\Tests;
 use BradTipper\RestfulServer\Auth\AuthSession;
 use PHPUnit\Framework\TestCase;
 
+final class AuthSessionTestDouble extends AuthSession
+{
+    private array $values = [];
+
+    public function __get(string $property): mixed
+    {
+        return $this->values[$property] ?? null;
+    }
+
+    public function __set(string $property, mixed $value): void
+    {
+        $this->values[$property] = $value;
+    }
+}
+
 final class AuthSessionTest extends TestCase
 {
     public function testAnonymousMemberCannotCreateSession(): void
@@ -28,7 +43,7 @@ final class AuthSessionTest extends TestCase
 
     public function testToApiArrayExcludesInternalProperties(): void
     {
-        $session = (new \ReflectionClass(AuthSession::class))->newInstanceWithoutConstructor();
+        $session = (new \ReflectionClass(AuthSessionTestDouble::class))->newInstanceWithoutConstructor();
         $session->UUID = 'test-uuid-123';
         $session->MemberID = 42;
         $session->RefreshTokenHash = 'super-secret-hash';
@@ -54,7 +69,7 @@ final class AuthSessionTest extends TestCase
 
     public function testToApiArrayExposesRevokedAtWhenSet(): void
     {
-        $session = (new \ReflectionClass(AuthSession::class))->newInstanceWithoutConstructor();
+        $session = (new \ReflectionClass(AuthSessionTestDouble::class))->newInstanceWithoutConstructor();
         $session->UUID = 'revoked-session';
         $session->Label = 'Old device';
         $session->ExpiresAt = '2026-06-01 00:00:00';
